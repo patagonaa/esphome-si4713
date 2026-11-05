@@ -61,6 +61,9 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool tune_freq_(uint16_t freq);
   bool tune_pwr_(uint8_t power_dbuv);
   bool measure_noise_(uint16_t freq, uint8_t *noise_dbuv);
+  bool set_rds_radio_text_(const char *radio_text);
+  bool set_rds_station_name_(const char *station_name);
+  bool enable_rds_(uint8_t pty);
 
   uint8_t preemphasis_mode_;
   uint16_t reference_clock_frequency_;

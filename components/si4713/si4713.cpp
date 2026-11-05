@@ -257,4 +257,74 @@ bool Si4713Component::measure_noise_(uint16_t freq, uint8_t *noise_dbuv) {
   return true;
 }
 
+bool Si4713Component::set_rds_radio_text_(const char *radio_text)
+{
+  uint8_t request[8];
+  request[0] = SI47XX_CMD_TX_RDS_BUFF;
+
+  uint8_t group = 0x20; // Group 2A
+
+  size_t text_len = strlen(radio_text);
+  size_t text_buf_len = text_len + 1; // terminating "\r"
+  size_t pages = (text_buf_len % 4) == 0 ? (text_buf_len / 4) : ((text_buf_len / 4) + 1);
+
+  // we could check the TX_RDS_BUFF response for available space, but 53 is the guaranteed minimum length which should be enough.
+  if (pages > 53) {
+    ESP_LOGW(TAG, "Radio text is too long!");
+    return false;
+  }
+
+  for (size_t page = 0; page < pages; page++) {
+    request[1] = page == 0 ? 0x06 : 0x04; // load buffer, clear buffer on first page
+    request[2] = group;
+    request[3] = page;
+
+    for (size_t j = 0; j < 4; j++) {
+      size_t idx = page * 4 + j;
+      request[4 + j] = (idx >= text_len) ? '\r' : radio_text[idx];
+    }
+
+    if (!this->write_and_wait_(request, 8, nullptr, 0))
+      return false;
+  }
+
+  return true;
+}
+
+bool Si4713Component::set_rds_station_name_(const char *station_name) {
+  uint8_t request[6];
+  request[0] = SI47XX_CMD_TX_RDS_PS;
+
+  size_t station_len = strlen(station_name);
+  size_t messages = (station_len % 8) == 0 ? (station_len / 8) : ((station_len / 8) + 1);
+  size_t pages = messages * 2;
+
+  for (size_t page = 0; page < pages; page++) {
+    request[1] = page;
+    for (size_t j = 0; j < 4; j++) {
+      size_t idx = page * 4 + j;
+      request[2 + j] = (idx >= station_len) ? ' ' : station_name[idx];
+    }
+
+    if (!this->write_and_wait_(request, 6, nullptr, 0))
+      return false;
+  }
+
+  if (!this->set_property_(SI47XX_PROP_TX_RDS_PS_MESSAGE_COUNT, messages))
+    return false;
+
+  return true;
+}
+
+bool Si4713Component::enable_rds_(uint8_t pty)
+{
+  if (!this->set_property_(SI47XX_PROP_TX_RDS_PS_MISC, SI47XX_TX_RDS_PS_MISC_RDSMS | SI47XX_TX_RDS_PS_MISC_RDSD3 | SI47XX_TX_RDS_PS_MISC_FORCEB | ((pty & 0x1F) << 5)))
+    return false;
+
+  if (!this->set_property_(SI47XX_PROP_TX_COMPONENT_ENABLE, SI47XX_TX_COMPONENT_ENABLE_LR | SI47XX_TX_COMPONENT_ENABLE_PILOT | SI47XX_TX_COMPONENT_ENABLE_RDS))
+    return false;
+
+  return true;
+}
+
 } // namespace esphome::si4713
