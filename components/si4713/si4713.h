@@ -38,6 +38,10 @@ class Si4713PowerNumber final : public number::Number, public Component, public 
 
 class Si4713Component final : public Component, public i2c::I2CDevice {
  public:
+  void setup() override;
+  void dump_config() override;
+  void loop() override;
+
   void set_preemphasis_mode(uint8_t preemphasis_mode) {
     this->preemphasis_mode_ = preemphasis_mode;
   };
@@ -45,13 +49,12 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
     this->reference_clock_frequency_ = freq;
   };
   void set_reset_pin(GPIOPin *reset_pin) { this->reset_pin_ = reset_pin; }
-  void setup() override;
-  void dump_config() override;
-  void loop() override;
+
+  void set_tx_frequency(uint16_t freq);
+  void set_tx_power(uint8_t power_dbuv);
+  bool tune();
 
  protected:
-  friend class Si4713FrequencyNumber;
-  friend class Si4713PowerNumber;
   void reset_device_();
   bool write_and_wait_(const uint8_t* data, size_t data_length, uint8_t* response, size_t response_length);
   bool power_up_();
@@ -69,6 +72,9 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   uint16_t reference_clock_frequency_;
 
   bool tune_in_progress_{false};
+
+  uint16_t tx_frequency_{0};
+  uint8_t tx_power_{0};
 
   GPIOPin *reset_pin_{nullptr};
 };

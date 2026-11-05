@@ -20,8 +20,8 @@ void Si4713FrequencyNumber::setup() {
 }
 
 void Si4713FrequencyNumber::control(float value) {
-  this->parent_->tune_freq_((uint16_t)(value * 100.0f));
-
+  this->parent_->set_tx_frequency((uint16_t)(value * 100.0f));
+  this->parent_->tune();
   this->publish_state(value);
 
   if (this->restore_value_)
@@ -39,7 +39,8 @@ void Si4713PowerNumber::setup() {
 }
 
 void Si4713PowerNumber::control(float value) {
-  this->parent_->tune_pwr_((uint8_t)value);
+  this->parent_->set_tx_power((uint8_t)value);
+  this->parent_->tune();
 
   this->publish_state(value);
 
@@ -102,6 +103,25 @@ void Si4713Component::dump_config() {
                 this->preemphasis_mode_);
   LOG_I2C_DEVICE(this);
   LOG_PIN("  Reset Pin: ", this->reset_pin_);
+}
+
+void Si4713Component::set_tx_frequency(uint16_t freq) {
+  this->tx_frequency_ = freq;
+}
+
+void Si4713Component::set_tx_power(uint8_t power_dbuv) {
+  this->tx_power_ = power_dbuv;
+}
+
+bool Si4713Component::tune() {
+  if (this->tx_frequency_ == 0 || this->tx_power_ == 0) {
+    return false;
+  }
+  if (!this->tune_freq_(this->tx_frequency_))
+    return false;
+  if(!this->tune_pwr_(this->tx_power_))
+    return false;
+  return true;
 }
 
 void Si4713Component::reset_device_() {
