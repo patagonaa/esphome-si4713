@@ -3,6 +3,7 @@
 #include "esphome/core/component.h"
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/components/number/number.h"
+#include "esphome/components/switch/switch.h"
 
 #include <optional>
 
@@ -13,7 +14,7 @@ class Si4713Component;
 class Si4713FrequencyNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::PROCESSOR; }
+  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; }
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -26,7 +27,7 @@ class Si4713FrequencyNumber final : public number::Number, public Component, pub
 class Si4713PowerNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::PROCESSOR; }
+  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; }
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -34,6 +35,15 @@ class Si4713PowerNumber final : public number::Number, public Component, public 
   bool restore_value_{true};
 
   ESPPreferenceObject pref_;
+};
+
+class Si4713OutputEnableSwitch final : public switch_::Switch, public Component, public Parented<Si4713Component> {
+ public:
+  void setup() override;
+  float get_setup_priority() const override { return setup_priority::DATA - 2.0f; }
+
+ protected:
+  void write_state(bool state) override;
 };
 
 class Si4713Component final : public Component, public i2c::I2CDevice {
@@ -52,6 +62,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
 
   void set_tx_frequency(uint16_t freq);
   void set_tx_power(uint8_t power_dbuv);
+  void set_tx_output_enable(bool enable);
   bool tune();
 
  protected:
@@ -75,6 +86,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
 
   uint16_t tx_frequency_{0};
   uint8_t tx_power_{0};
+  bool tx_output_enable_{false};
 
   GPIOPin *reset_pin_{nullptr};
 };

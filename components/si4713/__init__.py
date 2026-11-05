@@ -23,6 +23,7 @@ MULTI_CONF = True
 
 CONF_OUTPUT_FREQUENCY_NUMBER = "output_frequency_number"
 CONF_OUTPUT_POWER_NUMBER = "output_power_number"
+CONF_OUTPUT_ENABLE_SWITCH = "output_enable_switch"
 CONF_REFERENCE_CLOCK_FREQUENCY = "reference_clock_frequency"
 CONF_TRANSMISSION_ENABLED = "transmission_enabled"
 CONF_PREEMPHASIS_MODE = "preemphasis_mode"
@@ -48,6 +49,10 @@ Si4713FrequencyNumber = si4713_ns.class_(
 
 Si4713PowerNumber = si4713_ns.class_(
     "Si4713PowerNumber", number.Number, cg.Component
+)
+
+Si4713OutputEnableSwitch = si4713_ns.class_(
+    "Si4713OutputEnableSwitch", switch.Switch, cg.Component
 )
 
 
@@ -116,6 +121,11 @@ CONFIG_SCHEMA = (
                 validate_power_min_max,
                 key=CONF_NAME,
             ),
+            cv.Required(CONF_OUTPUT_ENABLE_SWITCH): cv.maybe_simple_value(
+                switch.switch_schema(Si4713OutputEnableSwitch, default_restore_mode="RESTORE_DEFAULT_OFF")
+                .extend(cv.COMPONENT_SCHEMA),
+                key=CONF_NAME,
+            ),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -161,6 +171,10 @@ async def to_code(config: ConfigType) -> None:
     )
     await cg.register_parented(num_power_var, config[CONF_ID])
     await cg.register_component(num_power_var, config[CONF_OUTPUT_POWER_NUMBER])
+
+    sw_output_enable_var = await switch.new_switch(config[CONF_OUTPUT_ENABLE_SWITCH])
+    await cg.register_parented(sw_output_enable_var, config[CONF_ID])
+    await cg.register_component(sw_output_enable_var, config[CONF_OUTPUT_ENABLE_SWITCH])
 
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)

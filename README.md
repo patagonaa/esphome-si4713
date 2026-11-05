@@ -24,4 +24,5 @@ si4713:
   reference_clock_frequency: 32.768kHz # tune this if transmit frequency isn't 100% accurate
   output_frequency_number: "Output Frequency"
   output_power_number: "Output Power"
+  output_enable_switch: "Output Enable"
 ```

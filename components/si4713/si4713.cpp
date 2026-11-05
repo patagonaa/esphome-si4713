@@ -48,6 +48,20 @@ void Si4713PowerNumber::control(float value) {
     this->pref_.save(&value);
 }
 
+void Si4713OutputEnableSwitch::setup() {
+  auto initial_state = this->get_initial_state_with_restore_mode();
+  if (initial_state.has_value()) {
+    this->write_state(initial_state.value());
+  }
+}
+
+void Si4713OutputEnableSwitch::write_state(bool state) {
+  this->parent_->set_tx_output_enable(state);
+  this->parent_->tune();
+
+  this->publish_state(state);
+}
+
 void Si4713Component::setup() {
   this->reset_pin_->setup();
   this->reset_device_();
@@ -113,14 +127,28 @@ void Si4713Component::set_tx_power(uint8_t power_dbuv) {
   this->tx_power_ = power_dbuv;
 }
 
+void Si4713Component::set_tx_output_enable(bool enable) {
+  this->tx_output_enable_ = enable;
+}
+
 bool Si4713Component::tune() {
-  if (this->tx_frequency_ == 0 || this->tx_power_ == 0) {
-    return false;
+  if (this->tx_output_enable_) {
+    if (this->tx_frequency_ == 0 || this->tx_power_ == 0) {
+      return false;
+    }
+    if (!this->tune_freq_(this->tx_frequency_))
+      return false;
+    if (!this->tune_pwr_(this->tx_power_))
+      return false;
+  } else {
+    // HACK: after boot, if we _only_ call "tune_pwr_(0)", the STC interrupt gets reset but never set,
+    // causing an endless loop since tune_in_progress_ is true.
+    // after output has been on once, this isn't an issue anymore, but it doesn't hurt to always do both.
+    if (!this->tune_freq_(this->tx_frequency_))
+      return false;
+    if (!this->tune_pwr_(0))
+      return false;
   }
-  if (!this->tune_freq_(this->tx_frequency_))
-    return false;
-  if(!this->tune_pwr_(this->tx_power_))
-    return false;
   return true;
 }
 
