@@ -27,7 +27,7 @@ si4713:
   output_enable_switch: "Output Enable"
   # optional:
   rds:
-    station_name: "BeeMovie"
+    station_name: "BeeMovie" # 8 chars max
     program_type: 7 # "Culture"
-    radio_text: "According to all known laws of aviation\nthere is no way a bee sh"
+    radio_text: "According to all known laws of aviation\nthere is no way a bee sh" # 64 chars max
 ```

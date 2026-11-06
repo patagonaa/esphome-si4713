@@ -13,6 +13,7 @@ from esphome.const import (
     CONF_STEP,
     DEVICE_CLASS_FREQUENCY,
 )
+from esphome.cpp_generator import MockObj
 from esphome.types import ConfigType
 
 AUTO_LOAD = ["number", "switch"]
@@ -24,9 +25,8 @@ MULTI_CONF = True
 CONF_OUTPUT_FREQUENCY_NUMBER = "output_frequency_number"
 CONF_OUTPUT_POWER_NUMBER = "output_power_number"
 CONF_OUTPUT_ENABLE_SWITCH = "output_enable_switch"
-CONF_REFERENCE_CLOCK_FREQUENCY = "reference_clock_frequency"
-CONF_TRANSMISSION_ENABLED = "transmission_enabled"
 CONF_PREEMPHASIS_MODE = "preemphasis_mode"
+CONF_REFERENCE_CLOCK_FREQUENCY = "reference_clock_frequency"
 
 CONF_RDS = "rds"
 CONF_STATION_NAME = "station_name"
@@ -146,6 +146,29 @@ CONFIG_SCHEMA = (
 
 FINAL_VALIDATE_SCHEMA = i2c.final_validate_device_schema(DOMAIN, max_frequency="400khz")
 
+async def setup_rds(rds_config: ConfigType, hub: MockObj) -> None:
+    cg.add(hub.set_rds_pty(rds_config[CONF_PROGRAM_TYPE]))
+    cg.add(hub.set_rds_station_name(rds_config[CONF_STATION_NAME]))
+    if CONF_RADIO_TEXT in rds_config:
+        cg.add(hub.set_rds_text(rds_config[CONF_RADIO_TEXT]))
+    cg.add(hub.set_rds_enabled(True))
+
+
+async def setup_number(config: ConfigType, key: str) -> None:
+    num_var = await number.new_number(
+        config[key],
+        min_value=config[key][CONF_MIN_VALUE],
+        max_value=config[key][CONF_MAX_VALUE],
+        step=config[key][CONF_STEP],
+        )
+    cg.add(
+        num_var.set_restore_value(
+            config[key][CONF_RESTORE_VALUE]
+        )
+    )
+    await cg.register_parented(num_var, config[CONF_ID])
+    await cg.register_component(num_var, config[key])
+
 
 async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
@@ -157,39 +180,10 @@ async def to_code(config: ConfigType) -> None:
     cg.add(var.set_reference_clock_frequency(config[CONF_REFERENCE_CLOCK_FREQUENCY]))
 
     if CONF_RDS in config:
-        cg.add(var.set_rds_pty(config[CONF_RDS][CONF_PROGRAM_TYPE]))
-        cg.add(var.set_rds_station_name(config[CONF_RDS][CONF_STATION_NAME]))
-        if CONF_RADIO_TEXT in config[CONF_RDS]:
-            cg.add(var.set_rds_text(config[CONF_RDS][CONF_RADIO_TEXT]))
-        cg.add(var.set_rds_enabled(True))
+        await setup_rds(config[CONF_RDS], var)
 
-    num_freq_var = await number.new_number(
-        config[CONF_OUTPUT_FREQUENCY_NUMBER],
-        min_value=config[CONF_OUTPUT_FREQUENCY_NUMBER][CONF_MIN_VALUE],
-        max_value=config[CONF_OUTPUT_FREQUENCY_NUMBER][CONF_MAX_VALUE],
-        step=config[CONF_OUTPUT_FREQUENCY_NUMBER][CONF_STEP],
-        )
-    cg.add(
-        num_freq_var.set_restore_value(
-            config[CONF_OUTPUT_FREQUENCY_NUMBER][CONF_RESTORE_VALUE]
-        )
-    )
-    await cg.register_parented(num_freq_var, config[CONF_ID])
-    await cg.register_component(num_freq_var, config[CONF_OUTPUT_FREQUENCY_NUMBER])
-
-    num_power_var = await number.new_number(
-        config[CONF_OUTPUT_POWER_NUMBER],
-        min_value=config[CONF_OUTPUT_POWER_NUMBER][CONF_MIN_VALUE],
-        max_value=config[CONF_OUTPUT_POWER_NUMBER][CONF_MAX_VALUE],
-        step=config[CONF_OUTPUT_POWER_NUMBER][CONF_STEP],
-        )
-    cg.add(
-        num_power_var.set_restore_value(
-            config[CONF_OUTPUT_POWER_NUMBER][CONF_RESTORE_VALUE]
-        )
-    )
-    await cg.register_parented(num_power_var, config[CONF_ID])
-    await cg.register_component(num_power_var, config[CONF_OUTPUT_POWER_NUMBER])
+    await setup_number(config, CONF_OUTPUT_FREQUENCY_NUMBER)
+    await setup_number(config, CONF_OUTPUT_POWER_NUMBER)
 
     sw_output_enable_var = await switch.new_switch(config[CONF_OUTPUT_ENABLE_SWITCH])
     await cg.register_parented(sw_output_enable_var, config[CONF_ID])
