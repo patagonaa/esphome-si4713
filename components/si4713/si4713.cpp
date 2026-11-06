@@ -21,7 +21,6 @@ void Si4713FrequencyNumber::setup() {
 
 void Si4713FrequencyNumber::control(float value) {
   this->parent_->set_tx_frequency((uint16_t)(value * 100.0f));
-  this->parent_->tune();
   this->publish_state(value);
 
   if (this->restore_value_)
@@ -40,7 +39,6 @@ void Si4713PowerNumber::setup() {
 
 void Si4713PowerNumber::control(float value) {
   this->parent_->set_tx_power((uint8_t)value);
-  this->parent_->tune();
 
   this->publish_state(value);
 
@@ -57,56 +55,35 @@ void Si4713OutputEnableSwitch::setup() {
 
 void Si4713OutputEnableSwitch::write_state(bool state) {
   this->parent_->set_tx_output_enable(state);
-  this->parent_->tune();
 
   this->publish_state(state);
 }
 
 void Si4713Component::setup() {
   this->reset_pin_->setup();
-  this->reset_device_();
-
-  if (!this->power_up_()) {
-    this->mark_failed(LOG_STR("failed to power up"));
+  
+  if (!this->init_device_()) {
+    this->mark_failed(LOG_STR("Couldn't initialize device!"));
     return;
-  }
-
-  if (!this->set_property_(SI47XX_PROP_TX_PREEMPHASIS, this->preemphasis_mode_)){
-    this->mark_failed(LOG_STR("failed to set property"));
-    return;
-  }
-
-  if (!this->set_property_(SI47XX_PROP_REFCLK_FREQ, this->reference_clock_frequency_)){
-    this->mark_failed(LOG_STR("failed to set property"));
-    return;
-  }
-
-  ESP_LOGD(TAG, "Set properties");
-
-  uint8_t part_number;
-  if (!this->get_rev_(&part_number)) {
-    this->mark_failed(LOG_STR("failed to get part number"));
-    return;
-  }
-  ESP_LOGD(TAG, "Part number: %" PRIu8, part_number);
-  if (part_number != 13) {
-    this->mark_failed(LOG_STR("wrong part number returned"));
-    return;
-  }
-
-  if (this->rds_enabled_) {
-    this->set_rds_station_name_(this->rds_station_name_.c_str());
-    this->set_rds_radio_text_(this->rds_text_.c_str());
-    this->set_rds_pty_(this->rds_pty_);
-    this->enable_rds_(true);
   }
 }
 
 void Si4713Component::loop() {
+  if (!this->is_initialized_) {
+    ESP_LOGW(TAG, "Not initialized, trying to recover!");
+    if (this->init_device_()) {
+      ESP_LOGI(TAG, "recovered successfully!");
+    } else {
+      ESP_LOGW(TAG, "failed to recover!");
+    }
+    return;
+  }
+
   if (this->tune_in_progress_) {
     uint8_t status;
     if (!this->get_int_status_(&status)) {
-      this->mark_failed(LOG_STR("failed to get status!"));
+      ESP_LOGE(TAG, "Failed to get interrupt status!");
+      this->is_initialized_ = false;
       return;
     }
     constexpr uint8_t status_ready_flags = SI47XX_STATUS_CTS | SI47XX_STATUS_STCINT;
@@ -128,21 +105,92 @@ void Si4713Component::dump_config() {
 
 void Si4713Component::set_tx_frequency(uint16_t freq) {
   this->tx_frequency_ = freq;
+  if (this->is_initialized_) {
+    if (!this->tune_()) {
+      ESP_LOGE(TAG, "Failed to tune!");
+      this->is_initialized_ = false;
+    }
+  }
 }
 
 void Si4713Component::set_tx_power(uint8_t power_dbuv) {
   this->tx_power_ = power_dbuv;
+  if (this->is_initialized_) {
+    if (!this->tune_()) {
+      ESP_LOGE(TAG, "Failed to tune!");
+      this->is_initialized_ = false;
+    }
+  }
 }
 
 void Si4713Component::set_tx_output_enable(bool enable) {
   this->tx_output_enable_ = enable;
+  if (this->is_initialized_) {
+    if (!this->tune_()) {
+      ESP_LOGE(TAG, "Failed to tune!");
+      this->is_initialized_ = false;
+    }
+  }
 }
 
-bool Si4713Component::tune() {
+void Si4713Component::reset_device_() {
+  this->reset_pin_->digital_write(false);
+  delay(1);
+  this->reset_pin_->digital_write(true);
+  delay(1);
+}
+
+bool Si4713Component::init_device_() {
+  this->reset_device_();
+
+  if (!this->power_up_()) {
+    ESP_LOGE(TAG, "failed to power up");
+    return false;
+  }
+
+  if (!this->set_property_(SI47XX_PROP_TX_PREEMPHASIS, this->preemphasis_mode_)){
+    ESP_LOGE(TAG, "failed to set property");
+    return false;
+  }
+
+  if (!this->set_property_(SI47XX_PROP_REFCLK_FREQ, this->reference_clock_frequency_)){
+    ESP_LOGE(TAG, "failed to set property");
+    return false;
+  }
+
+  uint8_t part_number;
+  if (!this->get_rev_(&part_number)) {
+    ESP_LOGE(TAG, "failed to get part number");
+    return false;
+  }
+  if (part_number != 13) {
+    ESP_LOGE(TAG, "wrong part number %" PRIu8 " returned", part_number);
+    return false;
+  }
+
+  if (!this->update_rds_()) {
+    ESP_LOGE(TAG, "failed to setup RDS");
+    return false;
+  }
+
+  if (!this->tune_()) {
+    ESP_LOGE(TAG, "failed to tune");
+    return false;
+  }
+
+  this->is_initialized_ = true;
+
+  return true;
+}
+
+bool Si4713Component::tune_() {
+  // this only happens after boot if these aren't set yet.
+  // on boot, the output is off anyway, so we just ignore everyhing until these values are set correctly once
+  if (this->tx_frequency_ == 0 || this->tx_power_ == 0) {
+    return true;
+  }
+
   if (this->tx_output_enable_) {
-    if (this->tx_frequency_ == 0 || this->tx_power_ == 0) {
-      return false;
-    }
     if (!this->tune_freq_(this->tx_frequency_))
       return false;
     if (!this->tune_pwr_(this->tx_power_))
@@ -159,11 +207,25 @@ bool Si4713Component::tune() {
   return true;
 }
 
-void Si4713Component::reset_device_() {
-  this->reset_pin_->digital_write(false);
-  delay(1);
-  this->reset_pin_->digital_write(true);
-  delay(1);
+bool Si4713Component::update_rds_() {
+  if (this->rds_enabled_) {
+    if (!this->set_rds_station_name_(this->rds_station_name_.c_str())) {
+      return false;
+    }
+    if (!this->set_rds_radio_text_(this->rds_text_.c_str())) {
+      return false;
+    }
+    if (!this->set_rds_pty_(this->rds_pty_)) {
+      return false;
+    }
+    if (!this->enable_rds_(true)) {
+      return false;
+    }
+  }
+
+  //TODO: once this is dynamic, also disable RDS if it's off
+
+  return true;
 }
 
 bool Si4713Component::write_and_wait_(const uint8_t *data, size_t data_length, uint8_t* response, size_t response_length) {
@@ -247,7 +309,7 @@ bool Si4713Component::tune_freq_(uint16_t freq) {
     SI47XX_CMD_TX_TUNE_FREQ, 0,
     (uint8_t)(freq >> 8), (uint8_t)(freq & 0xFF)
   };
-  if(!this->write_and_wait_(freq_data, 4, nullptr, 0)) {
+  if (!this->write_and_wait_(freq_data, 4, nullptr, 0)) {
     return false;
   }
   ESP_LOGI(TAG, "Tuning to %.2f MHz", freq / 100.0f);

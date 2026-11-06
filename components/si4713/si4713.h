@@ -14,7 +14,7 @@ class Si4713Component;
 class Si4713FrequencyNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; }
+  float get_setup_priority() const override { return setup_priority::DATA + 1.0f; } // set these before main component is initializing
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -27,7 +27,7 @@ class Si4713FrequencyNumber final : public number::Number, public Component, pub
 class Si4713PowerNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; }
+  float get_setup_priority() const override { return setup_priority::DATA + 1.0f; } // set these before main component is initializing
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -40,7 +40,7 @@ class Si4713PowerNumber final : public number::Number, public Component, public 
 class Si4713OutputEnableSwitch final : public switch_::Switch, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA - 2.0f; }
+  float get_setup_priority() const override { return setup_priority::DATA + 1.0f; } // set these before main component is initializing
 
  protected:
   void write_state(bool state) override;
@@ -63,7 +63,6 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   void set_tx_frequency(uint16_t freq);
   void set_tx_power(uint8_t power_dbuv);
   void set_tx_output_enable(bool enable);
-  bool tune();
 
   void set_rds_pty(uint8_t value) { this->rds_pty_ = value; }
   void set_rds_station_name(const char* value) { this->rds_station_name_ = value; }
@@ -72,20 +71,28 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
 
  protected:
   void reset_device_();
+
+  bool init_device_();
+  bool tune_();
+  bool update_rds_();
+
   bool write_and_wait_(const uint8_t* data, size_t data_length, uint8_t* response, size_t response_length);
   bool power_up_();
   bool set_property_(uint16_t property, uint16_t value);
   bool get_rev_(uint8_t *part_number);
   bool get_int_status_(uint8_t *status);
+
   bool tune_freq_(uint16_t freq);
   bool tune_pwr_(uint8_t power_dbuv);
+
   bool measure_noise_(uint16_t freq, uint8_t *noise_dbuv);
 
   bool set_rds_pty_(uint8_t pty);
   bool set_rds_radio_text_(const char *radio_text);
   bool set_rds_station_name_(const char *station_name);
   bool enable_rds_(bool enabled);
-  bool enable_rds_(uint8_t pty);
+
+  bool is_initialized_{false};
 
   uint8_t preemphasis_mode_;
   uint16_t reference_clock_frequency_;
