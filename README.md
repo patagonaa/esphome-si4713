@@ -25,4 +25,9 @@ si4713:
   output_frequency_number: "Output Frequency"
   output_power_number: "Output Power"
   output_enable_switch: "Output Enable"
+  # optional:
+  rds:
+    station_name: "BeeMovie"
+    program_type: 7 # "Culture"
+    radio_text: "According to all known laws of aviation\nthere is no way a bee sh"
 ```

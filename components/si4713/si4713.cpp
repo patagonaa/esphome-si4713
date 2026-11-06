@@ -93,6 +93,12 @@ void Si4713Component::setup() {
     this->mark_failed(LOG_STR("wrong part number returned"));
     return;
   }
+
+  if (this->rds_enabled_) {
+    this->set_rds_station_name_(this->rds_station_name_.c_str());
+    this->set_rds_radio_text_(this->rds_text_.c_str());
+    this->enable_rds_(this->rds_pty_);
+  }
 }
 
 void Si4713Component::loop() {
@@ -305,15 +311,14 @@ bool Si4713Component::measure_noise_(uint16_t freq, uint8_t *noise_dbuv) {
   return true;
 }
 
-bool Si4713Component::set_rds_radio_text_(const char *radio_text)
-{
+bool Si4713Component::set_rds_radio_text_(const char *radio_text) {
   uint8_t request[8];
   request[0] = SI47XX_CMD_TX_RDS_BUFF;
 
   uint8_t group = 0x20; // Group 2A
 
   size_t text_len = strlen(radio_text);
-  size_t text_buf_len = text_len + 1; // terminating "\r"
+  size_t text_buf_len = text_len == 64 ? text_len : (text_len + 1); // terminating "\r"
   size_t pages = (text_buf_len % 4) == 0 ? (text_buf_len / 4) : ((text_buf_len / 4) + 1);
 
   // we could check the TX_RDS_BUFF response for available space, but 53 is the guaranteed minimum length which should be enough.
@@ -364,13 +369,14 @@ bool Si4713Component::set_rds_station_name_(const char *station_name) {
   return true;
 }
 
-bool Si4713Component::enable_rds_(uint8_t pty)
-{
+bool Si4713Component::enable_rds_(uint8_t pty) {
   if (!this->set_property_(SI47XX_PROP_TX_RDS_PS_MISC, SI47XX_TX_RDS_PS_MISC_RDSMS | SI47XX_TX_RDS_PS_MISC_RDSD3 | SI47XX_TX_RDS_PS_MISC_FORCEB | ((pty & 0x1F) << 5)))
     return false;
 
   if (!this->set_property_(SI47XX_PROP_TX_COMPONENT_ENABLE, SI47XX_TX_COMPONENT_ENABLE_LR | SI47XX_TX_COMPONENT_ENABLE_PILOT | SI47XX_TX_COMPONENT_ENABLE_RDS))
     return false;
+
+  ESP_LOGI(TAG, "RDS set up!");
 
   return true;
 }

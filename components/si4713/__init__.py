@@ -28,6 +28,11 @@ CONF_REFERENCE_CLOCK_FREQUENCY = "reference_clock_frequency"
 CONF_TRANSMISSION_ENABLED = "transmission_enabled"
 CONF_PREEMPHASIS_MODE = "preemphasis_mode"
 
+CONF_RDS = "rds"
+CONF_STATION_NAME = "station_name"
+CONF_PROGRAM_TYPE = "program_type"
+CONF_RADIO_TEXT = "radio_text"
+
 UNIT_DBUV = "dBµV"
 UNIT_MHZ = "MHz"
 
@@ -126,6 +131,13 @@ CONFIG_SCHEMA = (
                 .extend(cv.COMPONENT_SCHEMA),
                 key=CONF_NAME,
             ),
+            cv.Optional(CONF_RDS): cv.Schema(
+                {
+                    cv.Optional(CONF_PROGRAM_TYPE, default=0): cv.int_range(0, 31),
+                    cv.Required(CONF_STATION_NAME): cv.All(cv.string, cv.Length(min=1, max=8)),
+                    cv.Optional(CONF_RADIO_TEXT): cv.All(cv.string, cv.Length(min=1, max=64)),
+                }
+            )
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -143,6 +155,13 @@ async def to_code(config: ConfigType) -> None:
 
     cg.add(var.set_preemphasis_mode(config[CONF_PREEMPHASIS_MODE]))
     cg.add(var.set_reference_clock_frequency(config[CONF_REFERENCE_CLOCK_FREQUENCY]))
+
+    if CONF_RDS in config:
+        cg.add(var.set_rds_pty(config[CONF_RDS][CONF_PROGRAM_TYPE]))
+        cg.add(var.set_rds_station_name(config[CONF_RDS][CONF_STATION_NAME]))
+        if CONF_RADIO_TEXT in config[CONF_RDS]:
+            cg.add(var.set_rds_text(config[CONF_RDS][CONF_RADIO_TEXT]))
+        cg.add(var.set_rds_enabled(True))
 
     num_freq_var = await number.new_number(
         config[CONF_OUTPUT_FREQUENCY_NUMBER],

@@ -65,6 +65,11 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   void set_tx_output_enable(bool enable);
   bool tune();
 
+  void set_rds_pty(uint8_t value) { this->rds_pty_ = value; }
+  void set_rds_station_name(const char* value) { this->rds_station_name_ = value; }
+  void set_rds_text(const char* value) { this->rds_text_ = value; }
+  void set_rds_enabled(bool value) { this->rds_enabled_ = value; }
+
  protected:
   void reset_device_();
   bool write_and_wait_(const uint8_t* data, size_t data_length, uint8_t* response, size_t response_length);
@@ -87,6 +92,11 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   uint16_t tx_frequency_{0};
   uint8_t tx_power_{0};
   bool tx_output_enable_{false};
+
+  uint8_t rds_pty_{0};
+  std::string rds_station_name_{};
+  std::string rds_text_{};
+  bool rds_enabled_{false};
 
   GPIOPin *reset_pin_{nullptr};
 };
