@@ -3,6 +3,7 @@
 #include "esphome/core/component.h"
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/components/number/number.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
 
 #include <optional>
@@ -47,6 +48,8 @@ class Si4713OutputEnableSwitch final : public switch_::Switch, public Component,
 };
 
 class Si4713Component final : public Component, public i2c::I2CDevice {
+  SUB_SENSOR(input_level)
+
  public:
   void setup() override;
   void dump_config() override;
@@ -92,6 +95,9 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool set_rds_station_name_(const char *station_name);
   bool enable_rds_(bool enabled);
 
+  bool get_asq_status_(int8_t* input_level_dbfs);
+
+  uint32_t last_asq_check_{0};
   bool is_initialized_{false};
 
   uint8_t preemphasis_mode_;

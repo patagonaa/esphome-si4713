@@ -92,6 +92,23 @@ void Si4713Component::loop() {
       this->tune_in_progress_ = false;
     }
   }
+
+  uint32_t now = App.get_loop_component_start_time();
+  if ((now - this->last_asq_check_) > 100) {
+    // do this periodically even if sensor is not configured
+    // so we have a chance to detect if the Si4713 has crashed and recover.
+    int8_t input_level;
+    if (this->get_asq_status_(&input_level)) {
+      if (this->input_level_sensor_ != nullptr)
+        this->input_level_sensor_->publish_state(input_level);
+    } else {
+      ESP_LOGE(TAG, "Failed to get ASQ status!");
+      this->is_initialized_ = false;
+      return;
+    }
+
+    this->last_asq_check_ = now;
+  }
 }
 
 void Si4713Component::dump_config() {
@@ -444,6 +461,16 @@ bool Si4713Component::enable_rds_(bool enabled) {
 
   ESP_LOGI(TAG, "RDS set up!");
 
+  return true;
+}
+
+bool Si4713Component::get_asq_status_(int8_t *input_level_dbfs) {
+  uint8_t request[] = {SI47XX_CMD_TX_ASQ_STATUS, 0};
+  uint8_t response[5];
+  if (!this->write_and_wait_(request, 6, response, 5))
+    return false;
+  
+  *input_level_dbfs = (int8_t)response[4];
   return true;
 }
 

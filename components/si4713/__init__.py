@@ -1,6 +1,6 @@
 from esphome import pins
 import esphome.codegen as cg
-from esphome.components import i2c, number, switch
+from esphome.components import i2c, number, switch, sensor
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_ID,
@@ -12,16 +12,18 @@ from esphome.const import (
     CONF_RESTORE_VALUE,
     CONF_STEP,
     DEVICE_CLASS_FREQUENCY,
+    STATE_CLASS_MEASUREMENT,
 )
 from esphome.cpp_generator import MockObj
 from esphome.types import ConfigType
 
-AUTO_LOAD = ["number", "switch"]
+AUTO_LOAD = ["number", "switch", "sensor"]
 CODEOWNERS = ["@patagonaa"]
 DEPENDENCIES = ["i2c"]
 DOMAIN = "si4713"
 MULTI_CONF = True
 
+CONF_INPUT_LEVEL_SENSOR = "input_level_sensor"
 CONF_OUTPUT_FREQUENCY_NUMBER = "output_frequency_number"
 CONF_OUTPUT_POWER_NUMBER = "output_power_number"
 CONF_OUTPUT_ENABLE_SWITCH = "output_enable_switch"
@@ -33,6 +35,7 @@ CONF_STATION_NAME = "station_name"
 CONF_PROGRAM_TYPE = "program_type"
 CONF_RADIO_TEXT = "radio_text"
 
+UNIT_DBFS = "dBFS"
 UNIT_DBUV = "dBµV"
 UNIT_MHZ = "MHz"
 
@@ -137,7 +140,15 @@ CONFIG_SCHEMA = (
                     cv.Required(CONF_STATION_NAME): cv.All(cv.string, cv.Length(min=1, max=8)),
                     cv.Optional(CONF_RADIO_TEXT): cv.All(cv.string, cv.Length(min=1, max=64)),
                 }
-            )
+            ),
+            cv.Optional(CONF_INPUT_LEVEL_SENSOR): cv.maybe_simple_value(
+                sensor.sensor_schema(
+                    unit_of_measurement=UNIT_DBFS,
+                    accuracy_decimals=0,
+                    state_class=STATE_CLASS_MEASUREMENT,
+                ),
+                key=CONF_NAME,
+            ),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -188,6 +199,10 @@ async def to_code(config: ConfigType) -> None:
     sw_output_enable_var = await switch.new_switch(config[CONF_OUTPUT_ENABLE_SWITCH])
     await cg.register_parented(sw_output_enable_var, config[CONF_ID])
     await cg.register_component(sw_output_enable_var, config[CONF_OUTPUT_ENABLE_SWITCH])
+
+    if CONF_INPUT_LEVEL_SENSOR in config:
+        input_level_sensor = await sensor.new_sensor(config[CONF_INPUT_LEVEL_SENSOR])
+        cg.add(var.set_input_level_sensor(input_level_sensor))
 
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
