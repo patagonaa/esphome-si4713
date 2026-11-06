@@ -97,7 +97,8 @@ void Si4713Component::setup() {
   if (this->rds_enabled_) {
     this->set_rds_station_name_(this->rds_station_name_.c_str());
     this->set_rds_radio_text_(this->rds_text_.c_str());
-    this->enable_rds_(this->rds_pty_);
+    this->set_rds_pty_(this->rds_pty_);
+    this->enable_rds_(true);
   }
 }
 
@@ -369,11 +370,14 @@ bool Si4713Component::set_rds_station_name_(const char *station_name) {
   return true;
 }
 
-bool Si4713Component::enable_rds_(uint8_t pty) {
-  if (!this->set_property_(SI47XX_PROP_TX_RDS_PS_MISC, SI47XX_TX_RDS_PS_MISC_RDSMS | SI47XX_TX_RDS_PS_MISC_RDSD3 | SI47XX_TX_RDS_PS_MISC_FORCEB | ((pty & 0x1F) << 5)))
+bool Si4713Component::set_rds_pty_(uint8_t pty) {
+  if (!this->set_property_(SI47XX_PROP_TX_RDS_PS_MISC, SI47XX_TX_RDS_PS_MISC_RDSMS | SI47XX_TX_RDS_PS_MISC_RDSD0 | SI47XX_TX_RDS_PS_MISC_RDSD3 | SI47XX_TX_RDS_PS_MISC_FORCEB | ((pty & 0x1F) << 5)))
     return false;
+  return true;
+}
 
-  if (!this->set_property_(SI47XX_PROP_TX_COMPONENT_ENABLE, SI47XX_TX_COMPONENT_ENABLE_LR | SI47XX_TX_COMPONENT_ENABLE_PILOT | SI47XX_TX_COMPONENT_ENABLE_RDS))
+bool Si4713Component::enable_rds_(bool enabled) {
+  if (!this->set_property_(SI47XX_PROP_TX_COMPONENT_ENABLE, SI47XX_TX_COMPONENT_ENABLE_LR | SI47XX_TX_COMPONENT_ENABLE_PILOT | (rds_enabled_ ? SI47XX_TX_COMPONENT_ENABLE_RDS : 0)))
     return false;
 
   ESP_LOGI(TAG, "RDS set up!");
