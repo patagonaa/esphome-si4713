@@ -48,7 +48,7 @@ class Si4713OutputEnableSwitch final : public switch_::Switch, public Component,
 };
 
 class Si4713Component final : public Component, public i2c::I2CDevice {
-  SUB_SENSOR(input_level)
+  SUB_SENSOR(audio_level)
 
  public:
   void setup() override;
@@ -95,7 +95,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool set_rds_station_name_(const char *station_name);
   bool enable_rds_(bool enabled);
 
-  bool get_asq_status_(int8_t* input_level_dbfs, bool* overmod);
+  bool get_asq_status_(int8_t* audio_level_dbfs, bool* overmod);
 
   uint32_t last_asq_check_{0};
   bool is_initialized_{false};

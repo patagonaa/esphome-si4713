@@ -23,7 +23,7 @@ DEPENDENCIES = ["i2c"]
 DOMAIN = "si4713"
 MULTI_CONF = True
 
-CONF_INPUT_LEVEL_SENSOR = "input_level_sensor"
+CONF_AUDIO_LEVEL_SENSOR = "audio_level_sensor"
 CONF_OUTPUT_FREQUENCY_NUMBER = "output_frequency_number"
 CONF_OUTPUT_POWER_NUMBER = "output_power_number"
 CONF_OUTPUT_ENABLE_SWITCH = "output_enable_switch"
@@ -141,7 +141,7 @@ CONFIG_SCHEMA = (
                     cv.Optional(CONF_RADIO_TEXT): cv.All(cv.string, cv.Length(min=1, max=64)),
                 }
             ),
-            cv.Optional(CONF_INPUT_LEVEL_SENSOR): cv.maybe_simple_value(
+            cv.Optional(CONF_AUDIO_LEVEL_SENSOR): cv.maybe_simple_value(
                 sensor.sensor_schema(
                     unit_of_measurement=UNIT_DBFS,
                     accuracy_decimals=0,
@@ -200,9 +200,9 @@ async def to_code(config: ConfigType) -> None:
     await cg.register_parented(sw_output_enable_var, config[CONF_ID])
     await cg.register_component(sw_output_enable_var, config[CONF_OUTPUT_ENABLE_SWITCH])
 
-    if CONF_INPUT_LEVEL_SENSOR in config:
-        input_level_sensor = await sensor.new_sensor(config[CONF_INPUT_LEVEL_SENSOR])
-        cg.add(var.set_input_level_sensor(input_level_sensor))
+    if CONF_AUDIO_LEVEL_SENSOR in config:
+        audio_level_sensor = await sensor.new_sensor(config[CONF_AUDIO_LEVEL_SENSOR])
+        cg.add(var.set_audio_level_sensor(audio_level_sensor))
 
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
