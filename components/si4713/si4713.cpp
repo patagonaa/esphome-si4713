@@ -98,9 +98,13 @@ void Si4713Component::loop() {
     // do this periodically even if sensor is not configured
     // so we have a chance to detect if the Si4713 has crashed and recover.
     int8_t input_level;
-    if (this->get_asq_status_(&input_level)) {
+    bool overmod;
+    if (this->get_asq_status_(&input_level, &overmod)) {
       if (this->input_level_sensor_ != nullptr)
         this->input_level_sensor_->publish_state(input_level);
+
+      if (overmod)
+        ESP_LOGI(TAG, "Audio gain too high!");
     } else {
       ESP_LOGE(TAG, "Failed to get ASQ status!");
       this->is_initialized_ = false;
@@ -464,12 +468,16 @@ bool Si4713Component::enable_rds_(bool enabled) {
   return true;
 }
 
-bool Si4713Component::get_asq_status_(int8_t *input_level_dbfs) {
-  uint8_t request[] = {SI47XX_CMD_TX_ASQ_STATUS, 0};
+bool Si4713Component::get_asq_status_(int8_t *input_level_dbfs, bool *overmod) {
+  uint8_t request[] = {
+    SI47XX_CMD_TX_ASQ_STATUS,
+    0x01 // ack interrupts
+  };
   uint8_t response[5];
   if (!this->write_and_wait_(request, 6, response, 5))
     return false;
   
+  *overmod = response[1] & 0x04;
   *input_level_dbfs = (int8_t)response[4];
   return true;
 }
