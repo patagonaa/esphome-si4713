@@ -127,7 +127,7 @@ void Si4713Component::dump_config() {
 void Si4713Component::set_tx_frequency(uint16_t freq) {
   this->tx_frequency_ = freq;
   if (this->is_initialized_) {
-    if (!this->tune_()) {
+    if (!this->tune_freq_(this->tx_frequency_)) {
       ESP_LOGE(TAG, "Failed to tune!");
       this->is_initialized_ = false;
     }
@@ -137,7 +137,7 @@ void Si4713Component::set_tx_frequency(uint16_t freq) {
 void Si4713Component::set_tx_power(uint8_t power_dbuv) {
   this->tx_power_ = power_dbuv;
   if (this->is_initialized_) {
-    if (!this->tune_()) {
+    if (!this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0)) {
       ESP_LOGE(TAG, "Failed to tune!");
       this->is_initialized_ = false;
     }
@@ -147,7 +147,7 @@ void Si4713Component::set_tx_power(uint8_t power_dbuv) {
 void Si4713Component::set_tx_output_enable(bool enable) {
   this->tx_output_enable_ = enable;
   if (this->is_initialized_) {
-    if (!this->tune_()) {
+    if (!this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0)) {
       ESP_LOGE(TAG, "Failed to tune!");
       this->is_initialized_ = false;
     }
@@ -194,37 +194,22 @@ bool Si4713Component::init_device_() {
     return false;
   }
 
-  if (!this->tune_()) {
-    ESP_LOGE(TAG, "failed to tune");
-    return false;
+  if (this->tx_frequency_ != 0) {
+    if (!this->tune_freq_(this->tx_frequency_)) {
+      ESP_LOGE(TAG, "failed to tune");
+      return false;
+    }
+  }
+
+  if (this->tx_output_enable_ != 0) {
+    if (!this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0)) {
+      ESP_LOGE(TAG, "failed to tune");
+      return false;
+    }
   }
 
   this->is_initialized_ = true;
 
-  return true;
-}
-
-bool Si4713Component::tune_() {
-  // this only happens after boot if these aren't set yet.
-  // on boot, the output is off anyway, so we just ignore everyhing until these values are set correctly once
-  if (this->tx_frequency_ == 0 || this->tx_power_ == 0) {
-    return true;
-  }
-
-  if (this->tx_output_enable_) {
-    if (!this->tune_freq_(this->tx_frequency_))
-      return false;
-    if (!this->tune_pwr_(this->tx_power_))
-      return false;
-  } else {
-    // HACK: after boot, if we _only_ call "tune_pwr_(0)", the STC interrupt gets reset but never set,
-    // causing an endless loop since tune_in_progress_ is true.
-    // after output has been on once, this isn't an issue anymore, but it doesn't hurt to always do both.
-    if (!this->tune_freq_(this->tx_frequency_))
-      return false;
-    if (!this->tune_pwr_(0))
-      return false;
-  }
   return true;
 }
 

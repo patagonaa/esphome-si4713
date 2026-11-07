@@ -76,7 +76,6 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   void reset_device_();
 
   bool init_device_();
-  bool tune_();
   bool update_rds_();
 
   bool write_and_wait_(const uint8_t* data, size_t data_length, uint8_t* response, size_t response_length);
