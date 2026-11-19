@@ -42,4 +42,7 @@ namespace esphome::si4713 {
   static constexpr uint16_t SI47XX_TX_RDS_PS_MISC_RDSD2 = 0x4000; // Compressed
   static constexpr uint16_t SI47XX_TX_RDS_PS_MISC_RDSD3 = 0x8000; // 0 = Mono, 1 = Stereo
 
+  static constexpr uint8_t SI47XX_CMD_TX_RDS_BUFF_ARG1_MTBUFF = 0x02; // clear buffer
+  static constexpr uint8_t SI47XX_CMD_TX_RDS_BUFF_ARG1_LDBUFF = 0x04; // load buffer
+
 } // namespace esphome::si4713
