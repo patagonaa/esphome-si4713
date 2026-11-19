@@ -9,7 +9,6 @@ namespace esphome::si4713 {
 ESPHOME_LOG_TAG(TAG, "si4713");
 
 void Si4713FrequencyNumber::setup() {
-  ESP_LOGD(TAG, "FreqNumber setup");
   float value;
   if (this->restore_value_) {
     this->pref_ = global_preferences->make_preference<float>(this->get_object_id_hash());
