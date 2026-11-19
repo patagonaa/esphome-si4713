@@ -136,7 +136,7 @@ CONFIG_SCHEMA = (
             ),
             cv.Optional(CONF_RDS): cv.Schema(
                 {
-                    cv.Optional(CONF_PROGRAM_TYPE, default=0): cv.int_range(0, 31),
+                    cv.Optional(CONF_PROGRAM_TYPE, default=0): cv.int_range(0, 29),
                     cv.Required(CONF_STATION_NAME): cv.All(cv.string, cv.Length(min=1, max=8)),
                     cv.Optional(CONF_RADIO_TEXT): cv.All(cv.string, cv.Length(min=1, max=64)),
                 }
