@@ -181,6 +181,12 @@ async def setup_number(config: ConfigType, key: str) -> None:
     await cg.register_component(num_var, config[key])
 
 
+async def setup_switch(config: ConfigType, key: str) -> None:
+    sw_var = await switch.new_switch(config[key])
+    await cg.register_parented(sw_var, config[CONF_ID])
+    await cg.register_component(sw_var, config[key])
+
+
 async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
 
@@ -196,9 +202,7 @@ async def to_code(config: ConfigType) -> None:
     await setup_number(config, CONF_OUTPUT_FREQUENCY_NUMBER)
     await setup_number(config, CONF_OUTPUT_POWER_NUMBER)
 
-    sw_output_enable_var = await switch.new_switch(config[CONF_OUTPUT_ENABLE_SWITCH])
-    await cg.register_parented(sw_output_enable_var, config[CONF_ID])
-    await cg.register_component(sw_output_enable_var, config[CONF_OUTPUT_ENABLE_SWITCH])
+    await setup_switch(config, CONF_OUTPUT_ENABLE_SWITCH)
 
     if CONF_AUDIO_LEVEL_SENSOR in config:
         audio_level_sensor = await sensor.new_sensor(config[CONF_AUDIO_LEVEL_SENSOR])

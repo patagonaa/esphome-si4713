@@ -15,7 +15,7 @@ class Si4713Component;
 class Si4713FrequencyNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA + 1.0f; } // set these before main component is initializing
+  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; } // set these after main component is initialized
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -28,7 +28,7 @@ class Si4713FrequencyNumber final : public number::Number, public Component, pub
 class Si4713PowerNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA + 1.0f; } // set these before main component is initializing
+  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; } // set these after main component is initialized
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -41,7 +41,7 @@ class Si4713PowerNumber final : public number::Number, public Component, public 
 class Si4713OutputEnableSwitch final : public switch_::Switch, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA + 1.0f; } // set these before main component is initializing
+  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; } // set these after main component is initialized
 
  protected:
   void write_state(bool state) override;
@@ -63,9 +63,9 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   };
   void set_reset_pin(GPIOPin *reset_pin) { this->reset_pin_ = reset_pin; }
 
-  void set_tx_frequency(uint16_t freq);
-  void set_tx_power(uint8_t power_dbuv);
-  void set_tx_output_enable(bool enable);
+  bool set_tx_frequency(uint16_t freq) { return this->tune_freq_(freq); }
+  bool set_tx_power(uint8_t power_dbuv);
+  bool set_tx_output_enable(bool enable);
 
   void set_rds_pty(uint8_t value) { this->rds_pty_ = value; }
   void set_rds_station_name(const char* value) { this->rds_station_name_ = value; }
@@ -97,14 +97,12 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool get_asq_status_(int8_t* audio_level_dbfs, bool* overmod);
 
   uint32_t last_asq_check_{0};
-  bool is_initialized_{false};
 
   uint8_t preemphasis_mode_;
   uint16_t reference_clock_frequency_;
 
   bool tune_in_progress_{false};
 
-  uint16_t tx_frequency_{0};
   uint8_t tx_power_{0};
   bool tx_output_enable_{false};
 

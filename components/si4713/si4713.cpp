@@ -19,7 +19,10 @@ void Si4713FrequencyNumber::setup() {
 }
 
 void Si4713FrequencyNumber::control(float value) {
-  this->parent_->set_tx_frequency((uint16_t)(value * 100.0f));
+  if (!this->parent_->set_tx_frequency((uint16_t)(value * 100.0f))) {
+    ESP_LOGW(TAG, "failed to set frequency");
+    return;
+  }
   this->publish_state(value);
 
   if (this->restore_value_)
@@ -37,8 +40,10 @@ void Si4713PowerNumber::setup() {
 }
 
 void Si4713PowerNumber::control(float value) {
-  this->parent_->set_tx_power((uint8_t)value);
-
+  if (!this->parent_->set_tx_power((uint8_t)value)) {
+    ESP_LOGW(TAG, "failed to set tx power");
+    return;
+  }
   this->publish_state(value);
 
   if (this->restore_value_)
@@ -53,8 +58,10 @@ void Si4713OutputEnableSwitch::setup() {
 }
 
 void Si4713OutputEnableSwitch::write_state(bool state) {
-  this->parent_->set_tx_output_enable(state);
-
+  if (!this->parent_->set_tx_output_enable(state)) {
+    ESP_LOGW(TAG, "failed to set tx enable");
+    return;
+  }
   this->publish_state(state);
 }
 
@@ -68,21 +75,10 @@ void Si4713Component::setup() {
 }
 
 void Si4713Component::loop() {
-  if (!this->is_initialized_) {
-    ESP_LOGW(TAG, "Not initialized, trying to recover!");
-    if (this->init_device_()) {
-      ESP_LOGI(TAG, "recovered successfully!");
-    } else {
-      ESP_LOGW(TAG, "failed to recover!");
-    }
-    return;
-  }
-
   if (this->tune_in_progress_) {
     uint8_t status;
     if (!this->get_int_status_(&status)) {
       ESP_LOGE(TAG, "Failed to get interrupt status!");
-      this->is_initialized_ = false;
       return;
     }
     constexpr uint8_t status_ready_flags = SI47XX_STATUS_CTS | SI47XX_STATUS_STCINT;
@@ -95,7 +91,7 @@ void Si4713Component::loop() {
   uint32_t now = App.get_loop_component_start_time();
   if ((now - this->last_asq_check_) > 100) {
     // do this periodically even if sensor is not configured
-    // so we have a chance to detect if the Si4713 has crashed and recover.
+    // so we have a chance to detect if the Si4713 has crashed.
     int8_t audio_level;
     bool overmod;
     if (this->get_asq_status_(&audio_level, &overmod)) {
@@ -106,7 +102,6 @@ void Si4713Component::loop() {
         ESP_LOGI(TAG, "Audio gain too high!");
     } else {
       ESP_LOGE(TAG, "Failed to get ASQ status!");
-      this->is_initialized_ = false;
       return;
     }
 
@@ -123,34 +118,14 @@ void Si4713Component::dump_config() {
   LOG_PIN("  Reset Pin: ", this->reset_pin_);
 }
 
-void Si4713Component::set_tx_frequency(uint16_t freq) {
-  this->tx_frequency_ = freq;
-  if (this->is_initialized_) {
-    if (!this->tune_freq_(this->tx_frequency_)) {
-      ESP_LOGE(TAG, "Failed to tune!");
-      this->is_initialized_ = false;
-    }
-  }
-}
-
-void Si4713Component::set_tx_power(uint8_t power_dbuv) {
+bool Si4713Component::set_tx_power(uint8_t power_dbuv) {
   this->tx_power_ = power_dbuv;
-  if (this->is_initialized_) {
-    if (!this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0)) {
-      ESP_LOGE(TAG, "Failed to tune!");
-      this->is_initialized_ = false;
-    }
-  }
+  return this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0);
 }
 
-void Si4713Component::set_tx_output_enable(bool enable) {
+bool Si4713Component::set_tx_output_enable(bool enable) {
   this->tx_output_enable_ = enable;
-  if (this->is_initialized_) {
-    if (!this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0)) {
-      ESP_LOGE(TAG, "Failed to tune!");
-      this->is_initialized_ = false;
-    }
-  }
+  return this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0);
 }
 
 void Si4713Component::reset_device_() {
@@ -193,22 +168,6 @@ bool Si4713Component::init_device_() {
     return false;
   }
 
-  if (this->tx_frequency_ != 0) {
-    if (!this->tune_freq_(this->tx_frequency_)) {
-      ESP_LOGE(TAG, "failed to tune");
-      return false;
-    }
-  }
-
-  if (this->tx_output_enable_ != 0) {
-    if (!this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0)) {
-      ESP_LOGE(TAG, "failed to tune");
-      return false;
-    }
-  }
-
-  this->is_initialized_ = true;
-
   return true;
 }
 
@@ -243,16 +202,19 @@ bool Si4713Component::write_and_wait_(const uint8_t *data, size_t data_length, u
   for (size_t i = 0; i < timeout_tries; i++) {
     uint8_t status = 0;
     if (this->bus_->write_readv(this->address_, nullptr, 0, &status, 1) != i2c::ErrorCode::NO_ERROR) {
+      this->mark_failed(LOG_STR("i2c transaction failed"));
       return false;
     }
 
     if (status & SI47XX_STATUS_ERR) {
+      ESP_LOGW(TAG, "error status returned!");
       return false;
     }
 
     if (status & SI47XX_STATUS_CTS) {
       if (response_length > 0) {
         if (this->bus_->write_readv(this->address_, nullptr, 0, response, response_length) != i2c::ErrorCode::NO_ERROR) {
+          this->mark_failed(LOG_STR("i2c transaction failed"));
           return false;
         }
       }
@@ -302,6 +264,7 @@ bool Si4713Component::get_rev_(uint8_t* part_number) {
 
 bool Si4713Component::get_int_status_(uint8_t* status) {
   if (this->read_register(SI47XX_CMD_GET_INT_STATUS, status, 1) != i2c::ErrorCode::ERROR_OK) {
+    this->mark_failed(LOG_STR("failed to read int status"));
     return false;
   }
   return true;
