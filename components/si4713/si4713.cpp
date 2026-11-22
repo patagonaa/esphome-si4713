@@ -58,6 +58,9 @@ void Si4713OutputEnableSwitch::setup() {
 }
 
 void Si4713OutputEnableSwitch::write_state(bool state) {
+  if (state == this->state) {
+    return;
+  }
   if (!this->parent_->set_tx_output_enable(state)) {
     ESP_LOGW(TAG, "failed to set tx enable");
     return;
