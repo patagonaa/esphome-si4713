@@ -97,6 +97,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool get_asq_status_(int8_t* audio_level_dbfs, bool* overmod);
 
   uint32_t last_asq_check_{0};
+  bool audio_level_valid_{false};
 
   uint8_t preemphasis_mode_;
   uint16_t reference_clock_frequency_;

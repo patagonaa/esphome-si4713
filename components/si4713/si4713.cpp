@@ -95,7 +95,11 @@ void Si4713Component::loop() {
     int8_t audio_level;
     bool overmod;
     if (this->get_asq_status_(&audio_level, &overmod)) {
-      if (this->audio_level_sensor_ != nullptr)
+      // before tuning is complete, audio level is invalid so we wait for the first
+      // non-zero value before updating the sensor.
+      if (!this->audio_level_valid_ && audio_level != 0)
+        this->audio_level_valid_ = true;
+      if (this->audio_level_sensor_ != nullptr && this->audio_level_valid_)
         this->audio_level_sensor_->publish_state(audio_level);
 
       if (overmod)
