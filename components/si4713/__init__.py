@@ -13,6 +13,7 @@ from esphome.const import (
     CONF_STEP,
     DEVICE_CLASS_FREQUENCY,
     STATE_CLASS_MEASUREMENT,
+    UNIT_MILLIVOLT
 )
 from esphome.cpp_generator import MockObj
 from esphome.types import ConfigType
@@ -27,6 +28,8 @@ CONF_AUDIO_LEVEL_SENSOR = "audio_level_sensor"
 CONF_OUTPUT_FREQUENCY_NUMBER = "output_frequency_number"
 CONF_OUTPUT_POWER_NUMBER = "output_power_number"
 CONF_OUTPUT_ENABLE_SWITCH = "output_enable_switch"
+CONF_MAX_AUDIO_LEVEL_NUMBER = "max_audio_level_number"
+
 CONF_PREEMPHASIS_MODE = "preemphasis_mode"
 CONF_REFERENCE_CLOCK_FREQUENCY = "reference_clock_frequency"
 
@@ -57,6 +60,10 @@ Si4713FrequencyNumber = si4713_ns.class_(
 
 Si4713PowerNumber = si4713_ns.class_(
     "Si4713PowerNumber", number.Number, cg.Component
+)
+
+Si4713MaxAudioLevelNumber = si4713_ns.class_(
+    "Si4713MaxAudioLevelNumber", number.Number, cg.Component
 )
 
 Si4713OutputEnableSwitch = si4713_ns.class_(
@@ -127,6 +134,22 @@ CONFIG_SCHEMA = (
                 )
                 .extend(cv.COMPONENT_SCHEMA),
                 validate_power_min_max,
+                key=CONF_NAME,
+            ),
+            cv.Required(CONF_MAX_AUDIO_LEVEL_NUMBER): cv.maybe_simple_value(
+                number.number_schema(
+                    Si4713MaxAudioLevelNumber,
+                    unit_of_measurement=UNIT_MILLIVOLT
+                )
+                .extend(
+                    {
+                        cv.Optional(CONF_MAX_VALUE, default=636): cv.positive_int,
+                        cv.Optional(CONF_MIN_VALUE, default=0): cv.positive_int,
+                        cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean,
+                        cv.Optional(CONF_STEP, default=1): cv.int_range(min=1),
+                    }
+                )
+                .extend(cv.COMPONENT_SCHEMA),
                 key=CONF_NAME,
             ),
             cv.Required(CONF_OUTPUT_ENABLE_SWITCH): cv.maybe_simple_value(
@@ -201,6 +224,7 @@ async def to_code(config: ConfigType) -> None:
 
     await setup_number(config, CONF_OUTPUT_FREQUENCY_NUMBER)
     await setup_number(config, CONF_OUTPUT_POWER_NUMBER)
+    await setup_number(config, CONF_MAX_AUDIO_LEVEL_NUMBER)
 
     await setup_switch(config, CONF_OUTPUT_ENABLE_SWITCH)
 

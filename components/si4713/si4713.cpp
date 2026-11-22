@@ -50,6 +50,27 @@ void Si4713PowerNumber::control(float value) {
     this->pref_.save(&value);
 }
 
+void Si4713MaxAudioLevelNumber::setup() {
+  float value;
+  if (this->restore_value_) {
+    this->pref_ = global_preferences->make_preference<float>(this->get_object_id_hash());
+    if (this->pref_.load(&value)) {
+      this->control(value);
+    }
+  }
+}
+
+void Si4713MaxAudioLevelNumber::control(float value) {
+  if (!this->parent_->set_max_audio_level((uint16_t)value)) {
+    ESP_LOGW(TAG, "failed to set max audio level");
+    return;
+  }
+  this->publish_state(value);
+
+  if (this->restore_value_)
+    this->pref_.save(&value);
+}
+
 void Si4713OutputEnableSwitch::setup() {
   auto initial_state = this->get_initial_state_with_restore_mode();
   if (initial_state.has_value()) {
@@ -75,6 +96,8 @@ void Si4713Component::setup() {
     this->mark_failed(LOG_STR("Couldn't initialize device!"));
     return;
   }
+
+  ESP_LOGI(TAG, "setup successful");
 }
 
 void Si4713Component::loop() {
@@ -133,6 +156,12 @@ bool Si4713Component::set_tx_power(uint8_t power_dbuv) {
 bool Si4713Component::set_tx_output_enable(bool enable) {
   this->tx_output_enable_ = enable;
   return this->tune_pwr_(this->tx_output_enable_ ? this->tx_power_ : 0);
+}
+
+bool Si4713Component::set_max_audio_level(uint16_t value_mv)
+{
+  uint8_t attenuation = 3;
+  return this->set_property_(SI47XX_PROP_TX_LINE_INPUT_LEVEL, (attenuation & 0x03) << 12 | (value_mv & 0x3FF));
 }
 
 void Si4713Component::reset_device_() {

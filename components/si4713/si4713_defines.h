@@ -22,6 +22,7 @@ namespace esphome::si4713 {
   
   static constexpr uint16_t SI47XX_PROP_TX_COMPONENT_ENABLE = 0x2100;
   static constexpr uint16_t SI47XX_PROP_REFCLK_FREQ = 0x0201;
+  static constexpr uint16_t SI47XX_PROP_TX_LINE_INPUT_LEVEL = 0x2104;
   static constexpr uint16_t SI47XX_PROP_TX_PREEMPHASIS = 0x2106;
   static constexpr uint16_t SI47XX_PROP_TX_RDS_PS_MIX = 0x2C02;
   static constexpr uint16_t SI47XX_PROP_TX_RDS_PS_MISC = 0x2C03;

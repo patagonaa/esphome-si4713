@@ -38,6 +38,19 @@ class Si4713PowerNumber final : public number::Number, public Component, public 
   ESPPreferenceObject pref_;
 };
 
+class Si4713MaxAudioLevelNumber final : public number::Number, public Component, public Parented<Si4713Component> {
+ public:
+  void setup() override;
+  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; } // set these after main component is initialized
+  void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
+
+ protected:
+  void control(float value) override;
+  bool restore_value_{true};
+
+  ESPPreferenceObject pref_;
+};
+
 class Si4713OutputEnableSwitch final : public switch_::Switch, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
@@ -66,6 +79,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool set_tx_frequency(uint16_t freq) { return this->tune_freq_(freq); }
   bool set_tx_power(uint8_t power_dbuv);
   bool set_tx_output_enable(bool enable);
+  bool set_max_audio_level(uint16_t value_mv);
 
   void set_rds_pty(uint8_t value) { this->rds_pty_ = value; }
   void set_rds_station_name(const char* value) { this->rds_station_name_ = value; }
