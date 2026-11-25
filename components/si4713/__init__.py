@@ -32,6 +32,9 @@ CONF_MAX_AUDIO_LEVEL_NUMBER = "max_audio_level_number"
 
 CONF_PREEMPHASIS_MODE = "preemphasis_mode"
 CONF_REFERENCE_CLOCK_FREQUENCY = "reference_clock_frequency"
+CONF_AUDIO_DEVIATION = "audio_deviation"
+CONF_PILOT_DEVIATION = "pilot_deviation"
+CONF_RDS_DEVIATION = "rds_deviation"
 
 CONF_RDS = "rds"
 CONF_STATION_NAME = "station_name"
@@ -100,6 +103,9 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_REFERENCE_CLOCK_FREQUENCY, default="32.768kHz"): cv.All(
                     cv.frequency, cv.Range(min=31130, max=34406)
                 ),
+            cv.Optional(CONF_AUDIO_DEVIATION, default="66.25kHz"): cv.All(cv.frequency, cv.Range(max=90000)),
+            cv.Optional(CONF_PILOT_DEVIATION, default="6.75kHz"): cv.All(cv.frequency, cv.Range(max=90000)),
+            cv.Optional(CONF_RDS_DEVIATION, default="2kHz"): cv.All(cv.frequency, cv.Range(max=7500)),
             cv.Required(CONF_OUTPUT_FREQUENCY_NUMBER): cv.maybe_simple_value(
                 number.number_schema(
                     Si4713FrequencyNumber,
@@ -218,6 +224,9 @@ async def to_code(config: ConfigType) -> None:
 
     cg.add(var.set_preemphasis_mode(config[CONF_PREEMPHASIS_MODE]))
     cg.add(var.set_reference_clock_frequency(config[CONF_REFERENCE_CLOCK_FREQUENCY]))
+    cg.add(var.set_audio_deviation(config[CONF_AUDIO_DEVIATION]/10))
+    cg.add(var.set_pilot_deviation(config[CONF_PILOT_DEVIATION]/10))
+    cg.add(var.set_rds_deviation(config[CONF_RDS_DEVIATION]/10))
 
     if CONF_RDS in config:
         await setup_rds(config[CONF_RDS], var)

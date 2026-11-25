@@ -74,6 +74,10 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   void set_reference_clock_frequency(uint16_t freq) {
     this->reference_clock_frequency_ = freq;
   };
+  void set_audio_deviation(uint16_t audio_deviation) { this->audio_deviation_ = audio_deviation; }
+  void set_pilot_deviation(uint16_t pilot_deviation) { this->pilot_deviation_ = pilot_deviation; }
+  void set_rds_deviation(uint16_t rds_deviation) { this->rds_deviation_ = rds_deviation; }
+
   void set_reset_pin(GPIOPin *reset_pin) { this->reset_pin_ = reset_pin; }
 
   bool set_tx_frequency(uint16_t freq) { return this->tune_freq_(freq); }
@@ -115,6 +119,9 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
 
   uint8_t preemphasis_mode_;
   uint16_t reference_clock_frequency_;
+  uint16_t audio_deviation_;
+  uint16_t pilot_deviation_;
+  uint16_t rds_deviation_;
 
   bool tune_in_progress_{false};
 

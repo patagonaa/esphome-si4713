@@ -189,6 +189,19 @@ bool Si4713Component::init_device_() {
     return false;
   }
 
+  if (!this->set_property_(SI47XX_PROP_TX_AUDIO_DEVIATION, this->audio_deviation_)) {
+    ESP_LOGE(TAG, "failed to set property");
+    return false;
+  }
+  if (!this->set_property_(SI47XX_PROP_TX_PILOT_DEVIATION, this->pilot_deviation_)) {
+    ESP_LOGE(TAG, "failed to set property");
+    return false;
+  }
+  if (!this->set_property_(SI47XX_PROP_TX_RDS_DEVIATION, this->rds_deviation_)) {
+    ESP_LOGE(TAG, "failed to set property");
+    return false;
+  }
+
   uint8_t part_number;
   if (!this->get_rev_(&part_number)) {
     ESP_LOGE(TAG, "failed to get part number");
