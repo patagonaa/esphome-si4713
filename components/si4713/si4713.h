@@ -15,7 +15,7 @@ class Si4713Component;
 class Si4713FrequencyNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; } // set these after main component is initialized
+  float get_setup_priority() const override { return setup_priority::DATA - 4.0f; } // set these after main component is initialized
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -28,7 +28,7 @@ class Si4713FrequencyNumber final : public number::Number, public Component, pub
 class Si4713PowerNumber final : public number::Number, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; } // set these after main component is initialized
+  float get_setup_priority() const override { return setup_priority::DATA - 3.0f; } // set these after main component is initialized
   void set_restore_value(bool restore_value) { this->restore_value_ = restore_value; }
 
  protected:
@@ -54,7 +54,7 @@ class Si4713MaxAudioLevelNumber final : public number::Number, public Component,
 class Si4713OutputEnableSwitch final : public switch_::Switch, public Component, public Parented<Si4713Component> {
  public:
   void setup() override;
-  float get_setup_priority() const override { return setup_priority::DATA - 1.0f; } // set these after main component is initialized
+  float get_setup_priority() const override { return setup_priority::DATA - 2.0f; } // set these after main component is initialized
 
  protected:
   void write_state(bool state) override;

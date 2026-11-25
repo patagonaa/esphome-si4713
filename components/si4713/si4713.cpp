@@ -204,6 +204,15 @@ bool Si4713Component::init_device_() {
     return false;
   }
 
+  // set power once so we don't run into issues when frequency gets set before power
+  // Issue:
+  // after power on, tx power has to be set before tx freq, otherwise the chip doesn't start transmitting.
+  // this doesn't happen again until power is reapplied, reset doesn't trigger this.
+  if (!this->tune_pwr_(0)) {
+    ESP_LOGE(TAG, "failed to set power!");
+    return false;
+  }
+
   return true;
 }
 
