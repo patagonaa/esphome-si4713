@@ -101,19 +101,6 @@ void Si4713Component::setup() {
 }
 
 void Si4713Component::loop() {
-  if (this->tune_in_progress_) {
-    uint8_t status;
-    if (!this->get_int_status_(&status)) {
-      ESP_LOGE(TAG, "Failed to get interrupt status!");
-      return;
-    }
-    constexpr uint8_t status_ready_flags = SI47XX_STATUS_CTS | SI47XX_STATUS_STCINT;
-    if ((status & status_ready_flags) == status_ready_flags) {
-      ESP_LOGI(TAG, "tune complete!");
-      this->tune_in_progress_ = false;
-    }
-  }
-
   uint32_t now = App.get_loop_component_start_time();
   if ((now - this->last_asq_check_) > 100) {
     // do this periodically even if sensor is not configured
@@ -329,8 +316,6 @@ bool Si4713Component::get_int_status_(uint8_t* status) {
 }
 
 bool Si4713Component::tune_freq_(uint16_t freq) {
-  this->tune_in_progress_ = true;
-
   const uint8_t freq_data[] = {
     SI47XX_CMD_TX_TUNE_FREQ, 0,
     (uint8_t)(freq >> 8), (uint8_t)(freq & 0xFF)
@@ -339,12 +324,25 @@ bool Si4713Component::tune_freq_(uint16_t freq) {
     return false;
   }
   ESP_LOGI(TAG, "Tuning to %.2f MHz", freq / 100.0f);
+
+  constexpr uint8_t status_ready_flags = SI47XX_STATUS_CTS | SI47XX_STATUS_STCINT;
+  for (size_t i = 0; i < 100; i++) { // ~100ms timeout
+    uint8_t status;
+    if (!this->get_int_status_(&status)) {
+      return false;
+    }
+    if ((status & status_ready_flags) == status_ready_flags) {
+      break;
+    }
+    delay(1);
+  }
+
+  ESP_LOGI(TAG, "Tuned successfully");
+
   return true;
 }
 
 bool Si4713Component::tune_pwr_(uint8_t power_dbuv) {
-  this->tune_in_progress_ = true;
-
   constexpr uint8_t ant_cap = 0;
   const uint8_t pwr_data[] = {
     SI47XX_CMD_TX_TUNE_POWER,
@@ -357,6 +355,20 @@ bool Si4713Component::tune_pwr_(uint8_t power_dbuv) {
   }
 
   ESP_LOGI(TAG, "Setting TX power to %" PRIu8 " dBuV", power_dbuv);
+
+  constexpr uint8_t status_ready_flags = SI47XX_STATUS_CTS | SI47XX_STATUS_STCINT;
+  for (size_t i = 0; i < 100; i++) { // ~100ms timeout
+    uint8_t status;
+    if (!this->get_int_status_(&status)) {
+      return false;
+    }
+    if ((status & status_ready_flags) == status_ready_flags) {
+      break;
+    }
+    delay(1);
+  }
+
+  ESP_LOGI(TAG, "TX power set successfully");
 
   return true;
 }
@@ -389,14 +401,9 @@ bool Si4713Component::measure_noise_(uint16_t freq, uint8_t *noise_dbuv) {
 
   ESP_LOGD(TAG, "Noise measurment finished!");
 
-  // get tune status
-  const uint8_t tune_status_req[] = {SI47XX_CMD_TX_TUNE_STATUS, 0x01};
-  uint8_t tune_status_res[8];
-  if (this->bus_->write_readv(this->address_, tune_status_req, 2, tune_status_res, 8) != i2c::ErrorCode::ERROR_OK) {
+  if (!this->get_tune_status_(nullptr, nullptr, nullptr, noise_dbuv)) {
     return false;
   }
-
-  *noise_dbuv = tune_status_res[7];
   return true;
 }
 
@@ -491,6 +498,28 @@ bool Si4713Component::get_asq_status_(int8_t *audio_level_dbfs, bool *overmod) {
   
   *overmod = response[1] & 0x04;
   *audio_level_dbfs = (int8_t)response[4];
+  return true;
+}
+
+bool Si4713Component::get_tune_status_(uint16_t *freq, uint8_t *pwr_dbuv, uint8_t *antcap, uint8_t *noise_dbuv) {
+  const uint8_t tune_status_req[] = {
+    SI47XX_CMD_TX_TUNE_STATUS,
+    0x01 // clear STC interrupt
+  };
+  uint8_t tune_status_res[8];
+  if (!this->write_and_wait_(tune_status_req, 2, tune_status_res, 8)) {
+    return false;
+  }
+
+  if (freq != nullptr)
+    *freq = (tune_status_res[2] << 8) | tune_status_res[3];
+  if (pwr_dbuv != nullptr)
+    *pwr_dbuv = tune_status_res[5];
+  if (antcap != nullptr)
+    *antcap = tune_status_res[6];
+  if (noise_dbuv != nullptr)
+    *noise_dbuv = tune_status_res[7];
+  
   return true;
 }
 

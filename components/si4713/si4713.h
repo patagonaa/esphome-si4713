@@ -113,6 +113,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool enable_rds_(bool enabled);
 
   bool get_asq_status_(int8_t* audio_level_dbfs, bool* overmod);
+  bool get_tune_status_(uint16_t* freq, uint8_t* pwr_dbuv, uint8_t* antcap, uint8_t* noise_dbuv);
 
   uint32_t last_asq_check_{0};
   bool audio_level_valid_{false};
@@ -122,8 +123,6 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   uint16_t audio_deviation_;
   uint16_t pilot_deviation_;
   uint16_t rds_deviation_;
-
-  bool tune_in_progress_{false};
 
   uint8_t tx_power_{0};
   bool tx_output_enable_{false};
