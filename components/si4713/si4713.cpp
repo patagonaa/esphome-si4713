@@ -93,7 +93,8 @@ void Si4713Component::setup() {
   this->reset_pin_->setup();
   
   if (!this->init_device_()) {
-    this->mark_failed(LOG_STR("Couldn't initialize device!"));
+    ESP_LOGE(TAG, "Couldn't initialize device!");
+    this->mark_failed_internal();
     return;
   }
 
@@ -102,27 +103,34 @@ void Si4713Component::setup() {
 
 void Si4713Component::loop() {
   uint32_t now = App.get_loop_component_start_time();
-  if ((now - this->last_asq_check_) > 100) {
+  if ((now - this->last_status_check_) > 100) {
     // do this periodically even if sensor is not configured
     // so we have a chance to detect if the Si4713 has crashed.
     int8_t audio_level;
     bool overmod;
     if (this->get_asq_status_(&audio_level, &overmod)) {
-      // before tuning is complete, audio level is invalid so we wait for the first
-      // non-zero value before updating the sensor.
-      if (!this->audio_level_valid_ && audio_level != 0)
-        this->audio_level_valid_ = true;
-      if (this->audio_level_sensor_ != nullptr && this->audio_level_valid_)
+      if (this->audio_level_sensor_ != nullptr)
         this->audio_level_sensor_->publish_state(audio_level);
 
       if (overmod)
         ESP_LOGI(TAG, "Audio gain too high!");
     } else {
       ESP_LOGE(TAG, "Failed to get ASQ status!");
+      this->mark_failed_internal();
       return;
     }
 
-    this->last_asq_check_ = now;
+    uint8_t pwr_dbuv;
+    if (this->get_tune_status_(nullptr, &pwr_dbuv, nullptr, nullptr)) {
+      if (this->output_power_sensor_ != nullptr)
+        this->output_power_sensor_->publish_state(pwr_dbuv);
+    } else {
+      ESP_LOGE(TAG, "Failed to get tune status!");
+      this->mark_failed_internal();
+      return;
+    }
+
+    this->last_status_check_ = now;
   }
 }
 
@@ -216,6 +224,15 @@ bool Si4713Component::init_device_() {
   return true;
 }
 
+void Si4713Component::mark_failed_internal() {
+  this->reset_pin_->digital_write(false); // reset chip to stop transmitting
+  if (this->audio_level_sensor_ != nullptr) 
+    this->audio_level_sensor_->publish_state(NAN);
+  if (this->output_power_sensor_ != nullptr)
+    this->output_power_sensor_->publish_state(0);
+  this->mark_failed();
+}
+
 bool Si4713Component::update_rds_() {
   if (this->rds_enabled_) {
     if (!this->set_rds_station_name_(this->rds_station_name_.c_str())) {
@@ -247,7 +264,7 @@ bool Si4713Component::write_and_wait_(const uint8_t *data, size_t data_length, u
   for (size_t i = 0; i < timeout_tries; i++) {
     uint8_t status = 0;
     if (this->bus_->write_readv(this->address_, nullptr, 0, &status, 1) != i2c::ErrorCode::NO_ERROR) {
-      this->mark_failed(LOG_STR("i2c transaction failed"));
+      ESP_LOGW(TAG, "i2c transaction failed");
       return false;
     }
 
@@ -259,7 +276,7 @@ bool Si4713Component::write_and_wait_(const uint8_t *data, size_t data_length, u
     if (status & SI47XX_STATUS_CTS) {
       if (response_length > 0) {
         if (this->bus_->write_readv(this->address_, nullptr, 0, response, response_length) != i2c::ErrorCode::NO_ERROR) {
-          this->mark_failed(LOG_STR("i2c transaction failed"));
+          ESP_LOGW(TAG, "i2c transaction failed");
           return false;
         }
       }
@@ -309,7 +326,6 @@ bool Si4713Component::get_rev_(uint8_t* part_number) {
 
 bool Si4713Component::get_int_status_(uint8_t* status) {
   if (this->read_register(SI47XX_CMD_GET_INT_STATUS, status, 1) != i2c::ErrorCode::ERROR_OK) {
-    this->mark_failed(LOG_STR("failed to read int status"));
     return false;
   }
   return true;

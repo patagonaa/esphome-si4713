@@ -62,6 +62,7 @@ class Si4713OutputEnableSwitch final : public switch_::Switch, public Component,
 
 class Si4713Component final : public Component, public i2c::I2CDevice {
   SUB_SENSOR(audio_level)
+  SUB_SENSOR(output_power)
 
  public:
   void setup() override;
@@ -94,6 +95,8 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   void reset_device_();
 
   bool init_device_();
+  void mark_failed_internal();
+
   bool update_rds_();
 
   bool write_and_wait_(const uint8_t* data, size_t data_length, uint8_t* response, size_t response_length);
@@ -115,8 +118,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   bool get_asq_status_(int8_t* audio_level_dbfs, bool* overmod);
   bool get_tune_status_(uint16_t* freq, uint8_t* pwr_dbuv, uint8_t* antcap, uint8_t* noise_dbuv);
 
-  uint32_t last_asq_check_{0};
-  bool audio_level_valid_{false};
+  uint32_t last_status_check_{0};
 
   uint8_t preemphasis_mode_;
   uint16_t reference_clock_frequency_;
