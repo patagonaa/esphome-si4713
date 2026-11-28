@@ -140,6 +140,7 @@ CONFIG_SCHEMA = (
                         cv.Optional(CONF_MIN_VALUE, default=88): cv.positive_int,
                         cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean,
                         cv.Optional(CONF_STEP, default=1): cv.int_range(min=1),
+                        cv.Optional(CONF_MODE, default="SLIDER"): cv.enum(number.NUMBER_MODES, upper=True),
                     }
                 )
                 .extend(cv.COMPONENT_SCHEMA),
@@ -157,6 +158,7 @@ CONFIG_SCHEMA = (
                         cv.Optional(CONF_MIN_VALUE, default=0): cv.positive_int,
                         cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean,
                         cv.Optional(CONF_STEP, default=1): cv.int_range(min=1),
+                        cv.Optional(CONF_MODE, default="SLIDER"): cv.enum(number.NUMBER_MODES, upper=True),
                     }
                 )
                 .extend(cv.COMPONENT_SCHEMA),
