@@ -244,13 +244,11 @@ bool Si4713Component::update_rds_() {
     if (!this->set_rds_pty_(this->rds_pty_)) {
       return false;
     }
-    if (!this->enable_rds_(true)) {
-      return false;
-    }
   }
 
-  //TODO: once this is dynamic, also disable RDS if it's off
-
+  if (!this->enable_rds_(this->rds_enabled_)) {
+    return false;
+  }
   return true;
 }
 
@@ -495,7 +493,7 @@ bool Si4713Component::set_rds_pty_(uint8_t pty) {
 }
 
 bool Si4713Component::enable_rds_(bool enabled) {
-  if (!this->set_property_(SI47XX_PROP_TX_COMPONENT_ENABLE, SI47XX_TX_COMPONENT_ENABLE_LR | SI47XX_TX_COMPONENT_ENABLE_PILOT | (rds_enabled_ ? SI47XX_TX_COMPONENT_ENABLE_RDS : 0)))
+  if (!this->set_property_(SI47XX_PROP_TX_COMPONENT_ENABLE, SI47XX_TX_COMPONENT_ENABLE_LR | SI47XX_TX_COMPONENT_ENABLE_PILOT | (enabled ? SI47XX_TX_COMPONENT_ENABLE_RDS : 0)))
     return false;
 
   ESP_LOGI(TAG, "RDS set up!");

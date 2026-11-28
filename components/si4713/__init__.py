@@ -40,6 +40,7 @@ CONF_PILOT_DEVIATION = "pilot_deviation"
 CONF_RDS_DEVIATION = "rds_deviation"
 
 CONF_RDS = "rds"
+CONF_ENABLED = "enabled"
 CONF_STATION_NAME = "station_name"
 CONF_PROGRAM_TYPE = "program_type"
 CONF_RADIO_TEXT = "radio_text"
@@ -168,8 +169,9 @@ CONFIG_SCHEMA = (
             ),
             cv.Optional(CONF_RDS): cv.Schema(
                 {
+                    cv.Required(CONF_ENABLED): cv.boolean,
                     cv.Optional(CONF_PROGRAM_TYPE, default=0): cv.int_range(0, 29),
-                    cv.Required(CONF_STATION_NAME): cv.All(cv.string, cv.Length(min=1, max=8)),
+                    cv.Optional(CONF_STATION_NAME): cv.All(cv.string, cv.Length(min=1, max=8)),
                     cv.Optional(CONF_RADIO_TEXT): cv.All(cv.string, cv.Length(min=1, max=64)),
                 }
             ),
@@ -197,12 +199,14 @@ CONFIG_SCHEMA = (
 
 FINAL_VALIDATE_SCHEMA = i2c.final_validate_device_schema(DOMAIN, max_frequency="400khz")
 
+
 async def setup_rds(rds_config: ConfigType, hub: MockObj) -> None:
     cg.add(hub.set_rds_pty(rds_config[CONF_PROGRAM_TYPE]))
-    cg.add(hub.set_rds_station_name(rds_config[CONF_STATION_NAME]))
+    if CONF_STATION_NAME in rds_config:
+        cg.add(hub.set_rds_station_name(rds_config[CONF_STATION_NAME]))
     if CONF_RADIO_TEXT in rds_config:
         cg.add(hub.set_rds_text(rds_config[CONF_RADIO_TEXT]))
-    cg.add(hub.set_rds_enabled(True))
+    cg.add(hub.set_rds_enabled(rds_config[CONF_ENABLED]))
 
 
 async def setup_number(config: ConfigType, key: str) -> None:

@@ -90,6 +90,7 @@ class Si4713Component final : public Component, public i2c::I2CDevice {
   void set_rds_station_name(const char* value) { this->rds_station_name_ = value; }
   void set_rds_text(const char* value) { this->rds_text_ = value; }
   void set_rds_enabled(bool value) { this->rds_enabled_ = value; }
+  bool update_rds() { return this->update_rds_(); }
 
  protected:
   void reset_device_();
